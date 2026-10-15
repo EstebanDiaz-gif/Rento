@@ -33,6 +33,13 @@ service cloud.firestore {
         allow create: if isMe(uid) && activa(uid);
         allow update, delete: if isMe(uid);
       }
+
+      // Vehículos y sus gastos (solo los ve la empresa dueña).
+      match /vehiculos/{id} {
+        allow read: if isMe(uid);
+        allow create: if isMe(uid) && activa(uid);
+        allow update, delete: if isMe(uid);
+      }
     }
 
     // Registro compartido por DNI.
