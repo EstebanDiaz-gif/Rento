@@ -19,7 +19,7 @@ service cloud.firestore {
       allow read: if isMe(uid);
       allow create: if isMe(uid)
         && request.resource.data.suscripta == false
-        && request.resource.data.trialHasta <= request.time + duration.value(15, 'd');
+        && request.resource.data.trialHasta <= request.time + duration.value(4, 'd');
       allow update: if isMe(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre']);
       allow delete: if false;

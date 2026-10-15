@@ -55,6 +55,8 @@ input,select,textarea{border-radius:16px;background:var(--soft)}
 /* ===== PEGAR AQUI LOS DATOS DE TU PROYECTO FIREBASE (reemplazar este bloque completo) ===== */
 const firebaseConfig={apiKey:"AIzaSyAy_k00Csd_aJX71GAjm-pko9XUvsXqoTI",authDomain:"alquilaseguro-9fe02.firebaseapp.com",projectId:"alquilaseguro-9fe02",appId:"1:282504523219:web:01059beb5eb0950dd11326"};
 /* ===== PEGAR AQUI EL LINK DE SUSCRIPCION DE MERCADO PAGO ===== */
+/* Días de prueba gratis para cuentas nuevas (las cuentas ya creadas mantienen su fecha) */
+const DIAS_PRUEBA=3;
 const LINK_PAGO="PEGAR_AQUI_EL_LINK_DE_MERCADO_PAGO";
 
 const B='https://www.gstatic.com/firebasejs/10.12.2/';
@@ -102,13 +104,13 @@ Au.onAuthStateChanged(auth,async u=>{user=u;if(u){try{await load()}catch(x){$('#
 catch(x){$('#app').innerHTML='<div class="c">No se pudo iniciar: '+esc(x.message)+'</div>'}})();
 
 async function load(){const ref=F.doc(db,'empresas',user.uid);let s=await F.getDoc(ref);
-if(!s.exists()){await F.setDoc(ref,{nombre:nom||'Mi empresa',email:user.email,suscripta:false,trialHasta:F.Timestamp.fromDate(new Date(Date.now()+14*864e5))});s=await F.getDoc(ref)}
+if(!s.exists()){await F.setDoc(ref,{nombre:nom||'Mi empresa',email:user.email,suscripta:false,trialHasta:F.Timestamp.fromDate(new Date(Date.now()+DIAS_PRUEBA*864e5))});s=await F.getDoc(ref)}
 emp={id:user.uid,...s.data()};const c=await F.getDocs(F.collection(db,'empresas',user.uid,'contratos'));CT=c.docs.map(d=>({id:d.id,...d.data()}));draw()}
 function go(t,id){tab=t;cur=id||null;draw();scrollTo(0,0)}
 async function ingresar(reg){const e=E('em').value.trim(),p=E('pw').value;E('er').textContent='';nom=E('nm').value.trim();
 try{reg?await Au.createUserWithEmailAndPassword(auth,e,p):await Au.signInWithEmailAndPassword(auth,e,p)}
 catch(x){E('er').textContent=({'auth/invalid-credential':'Mail o contraseña incorrectos.','auth/email-already-in-use':'Ese mail ya tiene cuenta.','auth/weak-password':'La contraseña debe tener 6 caracteres o más.','auth/invalid-email':'El mail no es válido.'})[x.code]||x.message}}
-const vAuth=()=>`<div style="background:${hw()?'#120a1f':'#fff'};border-radius:18px;padding:${hw()?0:14}px;overflow:hidden;text-align:center;margin:6px 0"><img src="${hw()?'logo-halloween.png':'logo.png'}" alt="Rento" style="max-width:230px;width:100%"></div><div class="c f"><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><input id="nm" placeholder="Nombre de tu empresa (solo para crear cuenta)"><small id="er" style="color:var(--ro)"></small><button class="b ac" onclick="ingresar(0)">Ingresar</button><button class="b" onclick="ingresar(1)">Crear cuenta, 14 días gratis</button></div>`;
+const vAuth=()=>`<div style="background:${hw()?'#120a1f':'#fff'};border-radius:18px;padding:${hw()?0:14}px;overflow:hidden;text-align:center;margin:6px 0"><img src="${hw()?'logo-halloween.png':'logo.png'}" alt="Rento" style="max-width:230px;width:100%"></div><div class="c f"><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><input id="nm" placeholder="Nombre de tu empresa (solo para crear cuenta)"><small id="er" style="color:var(--ro)"></small><button class="b ac" onclick="ingresar(0)">Ingresar</button><button class="b" onclick="ingresar(1)">Crear cuenta, ${DIAS_PRUEBA} días gratis</button></div>${botonInstalar()}`;
 async function mark(id,v){if(locked()){go('cuenta');return}const c=CT.find(x=>x.id===id);c.dias=c.dias||{};
 const quitar=c.dias[day(0)]===v,ds=v==='P'&&c.forma==='semanal'?[0,1,2,3,4,5,6]:[0],u={};
 /* Tocar de nuevo el mismo botón deshace la marca (por si se tocó por error) */
@@ -193,7 +195,7 @@ function vInf(){const w=Math.max(0,...R.map(r=>r.semaforo));return `<div class="
 <div class="c"><h1>Informe de chofer</h1><small>Emitido el ${new Date().toLocaleString('es-AR')} por ${esc(emp.nombre)}</small><h2>${esc(R[0]?R[0].nombre:'')}</h2><p>DNI ${esc(q)}. Tel ${waLink(R[0]?R[0].tel:'')}</p><p>Recomendación: ${badge(w)}<br><small>${R.length} registro${R.length===1?'':'s'} acumulado${R.length===1?'':'s'} a su nombre</small></p>`+
 R.map(r=>`<p><b>${esc(acr(r))}</b>${r.acreedor?' (informado por '+esc(r.empresaNombre)+')':'. '+esc(r.vehiculo)}<br>${r.acreedor?(r.fechaIncidente?'Fecha del incidente: '+esc(r.fechaIncidente):'Cargado el '+esc(r.alta)):'Alta '+esc(r.alta)+'. '+(r.estado==='cerrado'?'Cerrado el '+esc(r.cerradoEn):'Vigente')}<br>Deuda con ${esc(acr(r))}: <b>${fmt(r.deuda)}</b>${r.saldadaEl?'<br>Deuda original de '+fmt(r.deudaOriginal)+', saldada el '+esc(r.saldadaEl):''}${r.motivo?'<br>Motivo: '+esc(r.motivo):''}${r.hechos?'<br>Hechos: '+esc(r.hechos):''}</p>`).join('')+`<small>Datos informados por cada empresa. Ante un error, comunicarse con la empresa que lo cargó para corregirlo.</small></div>`}
 const vCuenta=()=>`<h1>Cuenta</h1><div class="c f"><b>Nombre de tu empresa</b><input id="em2" value="${esc(emp.nombre)}"><button class="b" onclick="guardarNombre()">Guardar nombre</button></div>
-<div class="c">${emp.suscripta?'<b>Suscripción activa</b><br>$25.000 por mes':'<b>Prueba gratis</b><br>Quedan '+Math.max(0,left())+' de 14 días. Después: $25.000 por mes.<br><br><button class="b ac" style="width:100%" onclick="suscribir()">Suscribirme por $25.000 al mes</button><br><small>Pagá con el mismo mail con el que ingresás ('+esc(emp.email)+'). Te activamos la cuenta apenas se acredita el pago.</small>'}</div><div class="c f"><b>Importar lista de choferes</b><small>Una línea por chofer, separado por punto y coma:<br>nombre;DNI;teléfono;provincia;deuda;motivo;hechos</small><textarea id="imp" rows="6" style="width:100%;padding:13px;border:1.5px solid transparent;border-radius:12px;background:var(--bg);color:var(--tx);font:16px 'Plus Jakarta Sans',system-ui,sans-serif" placeholder="Juan Pérez;30111222;3816145326;Tucumán;150000;Daño al vehículo;Chocó la moto el 3/5"></textarea><button class="b" onclick="importar()">Importar</button></div>${vRep()}${impMsg?'<div class="c note">'+esc(impMsg)+'</div>':''}<button class="b" style="width:100%" onclick="salir()">Cerrar sesión</button>`;
+<div class="c">${emp.suscripta?'<b>Suscripción activa</b><br>$25.000 por mes':'<b>Prueba gratis</b><br>Quedan '+Math.max(0,left())+' de '+DIAS_PRUEBA+' días. Después: $25.000 por mes.<br><br><button class="b ac" style="width:100%" onclick="suscribir()">Suscribirme por $25.000 al mes</button><br><small>Pagá con el mismo mail con el que ingresás ('+esc(emp.email)+'). Te activamos la cuenta apenas se acredita el pago.</small>'}</div><div class="c f"><b>Importar lista de choferes</b><small>Una línea por chofer, separado por punto y coma:<br>nombre;DNI;teléfono;provincia;deuda;motivo;hechos</small><textarea id="imp" rows="6" style="width:100%;padding:13px;border:1.5px solid transparent;border-radius:12px;background:var(--bg);color:var(--tx);font:16px 'Plus Jakarta Sans',system-ui,sans-serif" placeholder="Juan Pérez;30111222;3816145326;Tucumán;150000;Daño al vehículo;Chocó la moto el 3/5"></textarea><button class="b" onclick="importar()">Importar</button></div>${vRep()}${impMsg?'<div class="c note">'+esc(impMsg)+'</div>':''}${botonInstalar()}<button class="b" style="width:100%" onclick="salir()">Cerrar sesión</button>`;
 async function guardarNombre(){const n=E('em2').value.trim()||'Mi empresa';await F.updateDoc(F.doc(db,'empresas',user.uid),{nombre:n});emp.nombre=n;for(const c of CT)await sync(c);draw()}
 async function salir(){await Au.signOut(auth)}
 function suscribir(){if(!/^https?:\/\//.test(LINK_PAGO)){alert('El pago online todavía no está disponible. Escribinos para activar tu cuenta.');return}window.open(LINK_PAGO,'_blank')}
@@ -215,4 +217,13 @@ if(!user||!emp){$('#app').innerHTML=user?'<small>Cargando...</small>':vAuth();$(
 $('#app').innerHTML=V[tab]();$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='ficha'||tab==='nuevo'?'hoy':tab;
 document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t))}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+/* Instalar la app con un botón */
+let instEv=null;
+const instalada=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const esIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;draw()});
+addEventListener('appinstalled',()=>{instEv=null;draw()});
+async function instalar(){if(instEv){instEv.prompt();await instEv.userChoice;instEv=null;draw();return}
+alert(esIOS()?'En iPhone: tocá el botón Compartir (el cuadrado con la flecha) y después "Agregar a inicio".':'Abrí el menú del navegador (los 3 puntitos) y tocá "Instalar app" o "Agregar a pantalla principal".')}
+const botonInstalar=()=>instalada()?'':`<button class="b ac" style="width:100%;margin:8px 0" onclick="instalar()">📲 Instalar Rento en el celular</button>`;
 </script></body></html>
