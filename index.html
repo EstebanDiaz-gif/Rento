@@ -35,8 +35,19 @@ input,select,textarea{border-radius:16px;background:var(--soft)}
 .sw{display:flex;gap:10px;align-items:center;font-weight:600}.sw input{width:22px;height:22px;padding:0;accent-color:var(--ac)}
 #nav{border-radius:30px;padding:6px;gap:4px}#nav button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;border-radius:24px;padding:9px 0}
 #nav button.on{background:var(--soft);color:var(--ac)}
+:root.hw{--bg:#120a1f;--cd:#1e1430;--tx:#f3eaff;--mu:#b9a8d4;--bd:#3a2a55;--ac:#ff8a1f;--ok:#2fbf71;--am:#ffb020;--ro:#ff4d5e;--hero:#4b1d7a;--soft:#2b1e42;color-scheme:dark}
+:root.hw{background:var(--bg)}.hw body{background:radial-gradient(circle at 88% 0,rgba(255,170,60,.2),transparent 320px) no-repeat fixed,var(--bg)}
+.hw .big{position:relative;overflow:hidden;background:linear-gradient(140deg,#5b1f8f 0%,#2a0f45 58%,#8a3500 120%)}
+.hw .big::before,.hw .big::after{content:'';position:absolute;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'><path fill='%23c9a6ff' d='M50,18 52,17 54,3 56,18 64,21 76,12 89,-2 100,-6 97,19 94,15 92,13 90,12 88,15 86,19 84,25 82,22 80,20 78,19 76,21 74,25 72,30 70,27 68,25 66,25 65,26 63,29 61,33 56,42 50,46 50,46 44,42 39,33 37,29 35,26 34,25 32,25 30,27 28,30 26,25 24,21 22,19 20,20 18,22 16,25 14,19 12,15 10,12 8,13 6,15 3,19 0,-6 11,-2 24,12 36,21 44,18 46,3 48,17 50,18Z'/></svg>") no-repeat center/contain;opacity:.55;pointer-events:none}
+.hw .big::before{width:64px;height:32px;right:18px;top:16px;animation:vuelo 4s ease-in-out infinite}
+.hw .big::after{width:34px;height:17px;right:92px;top:42px;opacity:.35;animation:vuelo 5s ease-in-out -1.5s infinite}
+@keyframes vuelo{50%{transform:translateY(-6px) rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){.hw .big::before,.hw .big::after{animation:none}}
+.hw .b.ac{background:#ff7a00;color:#1c0c00}.hw #nav button.on{color:#ff8a1f}.hw .gear{color:#ff8a1f}
+.hw .note{background:rgba(255,138,31,.14)}.hw input:focus,.hw select:focus,.hw textarea:focus{border-color:#ff8a1f}
+@media print{.hw body{background:#fff}}
 </style>
-<meta name="theme-color" content="#03315f"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#03315f"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192-halloween.png"><link rel="apple-touch-icon" href="apple-touch-icon-halloween.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Rento">
 </head><body><div id="app"><small>Cargando...</small></div>
 <div id="nav"><button data-t="hoy" onclick="go('hoy')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Hoy</button><button data-t="buscar" onclick="go('buscar')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Buscar DNI</button><button data-t="cuenta" onclick="go('cuenta')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Cuenta</button></div>
@@ -55,7 +66,13 @@ const cls=n=>n>=3?'r':n>=1?'y':'g';
 const ICO='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 const head=t=>`<div class="top"><h1>${t}</h1><button class="gear" aria-label="Configuración" onclick="go('ajustes')">${ICO}</button></div>`;
 const tema=()=>{try{return localStorage.getItem('tema')||'auto'}catch(e){return 'auto'}};
-function aplicarTema(){const t=tema(),r=document.documentElement;t==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',t==='claro'?'light':'dark')}
+/* Halloween: se activa solo del 15/10 al 2/11 (se puede apagar en Configuración) */
+const hwPref=()=>{try{return localStorage.getItem('hw')||'auto'}catch(e){return 'auto'}};
+const hwFecha=()=>{const d=new Date(),m=d.getMonth()+1,n=d.getDate();return (m===10&&n>=15)||(m===11&&n<=2)};
+const hw=()=>hwPref()==='si'||(hwPref()==='auto'&&hwFecha());
+function setHw(v){try{localStorage.setItem('hw',v)}catch(e){}aplicarTema();draw()}
+function aplicarTema(){const t=tema(),r=document.documentElement;t==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',t==='claro'?'light':'dark');
+r.classList.toggle('hw',hw());const m=document.querySelector('meta[name=theme-color]');if(m)m.content=hw()?'#120a1f':'#03315f'}
 function setTema(v){try{localStorage.setItem('tema',v)}catch(e){}aplicarTema();draw()}
 aplicarTema();
 const rec=()=>{try{return JSON.parse(localStorage.getItem('rec'))||{on:false,h:'09:00'}}catch(e){return{on:false,h:'09:00'}}};
@@ -91,7 +108,7 @@ function go(t,id){tab=t;cur=id||null;draw();scrollTo(0,0)}
 async function ingresar(reg){const e=E('em').value.trim(),p=E('pw').value;E('er').textContent='';nom=E('nm').value.trim();
 try{reg?await Au.createUserWithEmailAndPassword(auth,e,p):await Au.signInWithEmailAndPassword(auth,e,p)}
 catch(x){E('er').textContent=({'auth/invalid-credential':'Mail o contraseña incorrectos.','auth/email-already-in-use':'Ese mail ya tiene cuenta.','auth/weak-password':'La contraseña debe tener 6 caracteres o más.','auth/invalid-email':'El mail no es válido.'})[x.code]||x.message}}
-const vAuth=()=>`<div style="background:#fff;border-radius:18px;padding:14px;text-align:center;margin:6px 0"><img src="logo.png" alt="Rento" style="max-width:230px;width:100%"></div><div class="c f"><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><input id="nm" placeholder="Nombre de tu empresa (solo para crear cuenta)"><small id="er" style="color:var(--ro)"></small><button class="b ac" onclick="ingresar(0)">Ingresar</button><button class="b" onclick="ingresar(1)">Crear cuenta, 14 días gratis</button></div>`;
+const vAuth=()=>`<div style="background:${hw()?'#120a1f':'#fff'};border-radius:18px;padding:${hw()?0:14}px;overflow:hidden;text-align:center;margin:6px 0"><img src="${hw()?'logo-halloween.png':'logo.png'}" alt="Rento" style="max-width:230px;width:100%"></div><div class="c f"><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><input id="nm" placeholder="Nombre de tu empresa (solo para crear cuenta)"><small id="er" style="color:var(--ro)"></small><button class="b ac" onclick="ingresar(0)">Ingresar</button><button class="b" onclick="ingresar(1)">Crear cuenta, 14 días gratis</button></div>`;
 async function mark(id,v){if(locked()){go('cuenta');return}const c=CT.find(x=>x.id===id);c.dias=c.dias||{};
 const quitar=c.dias[day(0)]===v,ds=v==='P'&&c.forma==='semanal'?[0,1,2,3,4,5,6]:[0],u={};
 /* Tocar de nuevo el mismo botón deshace la marca (por si se tocó por error) */
@@ -100,7 +117,7 @@ ok.forEach(i=>u['dias.'+day(i)]=quitar?F.deleteField():v);
 try{await F.updateDoc(cref(id),u)}catch(x){alert('No se pudo guardar: '+x.message);return}
 ok.forEach(i=>quitar?delete c.dias[day(i)]:c.dias[day(i)]=v);await sync(c);draw()}
 function vHoy(){const L=CT.filter(c=>c.estado==='vigente'),Z=CT.filter(c=>c.estado==='cerrado'&&!c.acreedor),RP=CT.filter(c=>c.acreedor),tot=L.reduce((s,c)=>s+deuda(c),0),pend=L.filter(c=>!(c.dias||{})[day(0)]).length;
-return banner()+`${head(esc(emp.nombre))}<div class="c big"><small>Te deben en total</small><b>${fmt(tot)}</b>${L.length?`<small>${pend?pend+' chofer'+(pend>1?'es':'')+' sin marcar hoy':'Todos marcados hoy'}</small>`:''}</div><div class="row"><h2>Hoy, ${day(0)}</h2><button class="b" style="flex:0 0 auto;min-height:44px;font-size:16px" onclick="go('nuevo')">Agregar chofer</button></div>`+
+return banner()+`${head(esc(emp.nombre))}<div class="c big"><small>Te deben en total${hw()?' 🎃':''}</small><b>${fmt(tot)}</b>${L.length?`<small>${pend?pend+' chofer'+(pend>1?'es':'')+' sin marcar hoy':'Todos marcados hoy'}</small>`:''}</div><div class="row"><h2>Hoy, ${day(0)}</h2><button class="b" style="flex:0 0 auto;min-height:44px;font-size:16px" onclick="go('nuevo')">Agregar chofer</button></div>`+
 (L.length?'':'<div class="c"><small>Todavía no cargaste choferes. Tocá "Agregar chofer" para empezar.</small></div>')+
 [...L].sort((a,b)=>st(b)-st(a)).map(c=>`<div class="c"><div class="li" onclick="go('ficha','${c.id}')"><span class="av ${cls(st(c))}">${esc((c.nombre.trim()[0]||'?').toUpperCase())}</span><div class="t"><b>${esc(c.nombre)}</b><br><small>${esc(c.vehiculo)} · Debe ${fmt(deuda(c))}</small></div>${badge(st(c))}</div>
 <div class="row"><button class="b ${(c.dias||{})[day(0)]==='P'?'sel':''}" onclick="mark('${c.id}','P')">Pagó${c.forma==='semanal'?' (7 días)':''}</button><button class="b ${(c.dias||{})[day(0)]==='D'?'selr':''}" onclick="mark('${c.id}','D')">Debe</button></div></div>`).join('')+
@@ -182,6 +199,7 @@ async function salir(){await Au.signOut(auth)}
 function suscribir(){if(!/^https?:\/\//.test(LINK_PAGO)){alert('El pago online todavía no está disponible. Escribinos para activar tu cuenta.');return}window.open(LINK_PAGO,'_blank')}
 const vAjustes=()=>`<button class="l" onclick="go('hoy')">Volver</button><h1>Configuración</h1>
 <div class="c f"><b>Apariencia</b><small>Elegí cómo se ve la app.</small><div class="seg">${[['auto','Según el dispositivo'],['claro','Clara'],['oscuro','Oscura']].map(([v,t])=>`<button class="b ${tema()===v?'ac':''}" onclick="setTema('${v}')">${t}</button>`).join('')}</div></div>
+<div class="c f"><b>Tema de Halloween 🎃</b><small>Se activa solo del 15 de octubre al 2 de noviembre.</small><div class="seg">${[['auto','Automático'],['si','Siempre'],['no','Apagado']].map(([v,t])=>`<button class="b ${hwPref()===v?'ac':''}" onclick="setHw('${v}')">${t}</button>`).join('')}</div></div>
 <div class="c f"><b>Recordatorio de cobro</b><small>Un aviso a la hora que elijas para marcar los pagos del día.</small><label class="sw"><input type="checkbox" id="rn" ${rec().on?'checked':''} onchange="guardarRec()">Activar recordatorio</label><input type="time" id="rh" value="${rec().h}" onchange="guardarRec()"><small id="rm"></small></div>
 <div class="c"><small>El aviso suena mientras la app esté abierta o instalada y activa en el celular. Para recibirlo con la app totalmente cerrada hace falta una etapa más, que se agrega después.</small></div>`;
 async function guardarRec(){const on=E('rn').checked,h=E('rh').value||'09:00';
