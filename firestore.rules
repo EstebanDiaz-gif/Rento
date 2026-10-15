@@ -1,0 +1,50 @@
+rules_version = '2';
+// Reglas de seguridad de Rento.
+// Copiar y pegar en Firebase Console > Firestore Database > Reglas > Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function empresa(uid) { return get(/databases/$(database)/documents/empresas/$(uid)).data; }
+    // Cuenta activa: suscripta (la activás vos desde la consola) o dentro de la prueba.
+    function activa(uid) {
+      let e = empresa(uid);
+      return e.suscripta == true || e.trialHasta > request.time;
+    }
+
+    // Datos de cada empresa. El usuario NO puede tocar "suscripta" ni "trialHasta":
+    // solo vos, desde la consola de Firebase.
+    match /empresas/{uid} {
+      allow read: if isMe(uid);
+      allow create: if isMe(uid)
+        && request.resource.data.suscripta == false
+        && request.resource.data.trialHasta <= request.time + duration.value(15, 'd');
+      allow update: if isMe(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre']);
+      allow delete: if false;
+
+      // Contratos (choferes). Cargar nuevos requiere cuenta activa;
+      // corregir, saldar o borrar los propios se permite siempre.
+      match /contratos/{id} {
+        allow read: if isMe(uid);
+        allow create: if isMe(uid) && activa(uid);
+        allow update, delete: if isMe(uid);
+      }
+    }
+
+    // Registro compartido por DNI.
+    match /registro/{dni}/entradas/{id} {
+      // Buscar DNIs solo con cuenta activa (es lo que se paga).
+      allow read: if signedIn() && activa(request.auth.uid);
+      // Cada empresa solo escribe entradas propias, con su nombre real,
+      // y que correspondan a un contrato suyo con ese mismo DNI.
+      allow create, update: if signedIn()
+        && request.resource.data.empresaId == request.auth.uid
+        && request.resource.data.empresaNombre == empresa(request.auth.uid).nombre
+        && get(/databases/$(database)/documents/empresas/$(request.auth.uid)/contratos/$(id)).data.dni == dni
+        && (resource == null || resource.data.empresaId == request.auth.uid);
+      allow delete: if signedIn() && resource.data.empresaId == request.auth.uid;
+    }
+  }
+}
