@@ -31,7 +31,9 @@ service cloud.firestore {
     // solo vos, desde la consola de Firebase.
     match /empresas/{uid} {
       allow read: if equipo(uid);
+      // Los colaboradores que entran solo con código (sin cuenta) no pueden crear empresas.
       allow create: if isMe(uid)
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.resource.data.suscripta == false
         && request.resource.data.trialHasta <= request.time + duration.value(4, 'd');
       // Solo el dueño cambia nombre, interés y código de colaboradores.
