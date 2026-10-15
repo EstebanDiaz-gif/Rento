@@ -43,6 +43,7 @@ input,select,textarea{border-radius:16px;background:var(--soft)}
 .hw .big::before,.hw .big::after{content:'';position:absolute;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'><path fill='%23c9a6ff' d='M50,18 52,17 54,3 56,18 64,21 76,12 89,-2 100,-6 97,19 94,15 92,13 90,12 88,15 86,19 84,25 82,22 80,20 78,19 76,21 74,25 72,30 70,27 68,25 66,25 65,26 63,29 61,33 56,42 50,46 50,46 44,42 39,33 37,29 35,26 34,25 32,25 30,27 28,30 26,25 24,21 22,19 20,20 18,22 16,25 14,19 12,15 10,12 8,13 6,15 3,19 0,-6 11,-2 24,12 36,21 44,18 46,3 48,17 50,18Z'/></svg>") no-repeat center/contain;opacity:.55;pointer-events:none}
 .hw .big::before{width:64px;height:32px;right:18px;top:16px;animation:vuelo 4s ease-in-out infinite}
 .hw .big::after{width:34px;height:17px;right:92px;top:42px;opacity:.35;animation:vuelo 5s ease-in-out -1.5s infinite}
+@keyframes aleteo{to{transform:scaleY(.55)}}
 @keyframes vuelo{50%{transform:translateY(-6px) rotate(-4deg)}}
 @media (prefers-reduced-motion:reduce){.hw .big::before,.hw .big::after{animation:none}}
 .hw .b.ac{background:#ff7a00;color:#1c0c00}.hw #nav button.on{color:#ff8a1f}.hw .gear{color:#ff8a1f}
@@ -308,9 +309,44 @@ async function editV(){const v=VH.find(x=>x.id===cur),u={nombre:E('vn').value.tr
 try{await F.updateDoc(vref(v.id),u);Object.assign(v,u);for(const c of CT.filter(c=>c.vehiculoId===v.id)){await F.updateDoc(cref(c.id),{vehiculo:vNom(v)});c.vehiculo=vNom(v);if(c.estado==='vigente')await sync(c)}}catch(x){alert('No se pudo guardar: '+x.message);return}draw()}
 async function borrarV(){const v=VH.find(x=>x.id===cur);if(!confirm('¿Eliminar '+vNom(v)+' y sus gastos? Los choferes que lo usaron no se borran.'))return;
 try{await F.deleteDoc(vref(v.id));for(const c of CT.filter(c=>c.vehiculoId===v.id)){await F.updateDoc(cref(c.id),{vehiculoId:''});c.vehiculoId=''}}catch(x){alert('No se pudo eliminar: '+x.message);return}VH=VH.filter(x=>x.id!==v.id);go('vehs')}
+
+/* ===== Intro de Halloween: murciélagos chocan con una telaraña y caen. Una vez por apertura, no bloquea la app. ===== */
+function introHw(){
+try{if(!hw()||matchMedia('(prefers-reduced-motion: reduce)').matches||sessionStorage.getItem('introHw'))return;sessionStorage.setItem('introHw','1')}catch(e){return}
+const W=innerWidth,cx=W/2,R=Math.min(W*.36,170),ns='http://www.w3.org/2000/svg';
+const ov=document.createElement('div');ov.setAttribute('aria-hidden','true');
+ov.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden';
+/* Telaraña colgando arriba al centro */
+let web='';const rays=12,rings=5,pt=(a,r)=>[cx+Math.cos(a)*r,R*.9+Math.sin(a)*r*.82];
+for(let i=0;i<rays;i++){const a=i/rays*2*Math.PI,[x,y]=pt(a,R);web+=`<line x1="${cx}" y1="${R*.9}" x2="${x}" y2="${y}"/>`}
+for(let k=1;k<=rings;k++){const r=R*k/rings;let dd='';for(let i=0;i<=rays;i++){const a=i/rays*2*Math.PI,a0=(i-.5)/rays*2*Math.PI,[x,y]=pt(a,r),[qx,qy]=pt(a0,r*.88);dd+=(i?` Q${qx},${qy} `:'M')+x+','+y}web+=`<path d="${dd}"/>`}
+web+=`<line x1="${cx}" y1="0" x2="${cx}" y2="${R*.9-R}"/>`;
+ov.innerHTML=`<svg id="tela" width="${W}" height="${R*2.1}" style="position:absolute;left:0;top:${-R*.15}px;transform-origin:${cx}px 0" fill="none" stroke="rgba(235,225,255,.6)" stroke-width="1.5" stroke-linecap="round">${web}</svg>`;
+document.body.appendChild(ov);
+const tela=ov.querySelector('#tela'),dur=(a,b)=>a+Math.random()*(b-a);
+tela.animate([{opacity:0,transform:'scale(.6)'},{opacity:1,transform:'scale(1)'}],{duration:450,easing:'ease-out',fill:'forwards'});
+/* Murciélagos */
+const BAT=`<svg viewBox="0 -8 100 50" width="100%" height="100%"><path fill="#4a1d78" stroke="#ead9ff" stroke-width="2.2" d="M50,18 52,17 54,3 56,18 64,21 76,12 89,-2 100,-6 97,19 94,15 92,13 90,12 88,15 86,19 84,25 82,22 80,20 78,19 76,21 74,25 72,30 70,27 68,25 66,25 65,26 63,29 61,33 56,42 50,46 50,46 44,42 39,33 37,29 35,26 34,25 32,25 30,27 28,30 26,25 24,21 22,19 20,20 18,22 16,25 14,19 12,15 10,12 8,13 6,15 3,19 0,-6 11,-2 24,12 36,21 44,18 46,3 48,17 50,18Z"/><circle cx="46" cy="17" r="2.4" fill="#ffb347"/><circle cx="54" cy="17" r="2.4" fill="#ffb347"/></svg>`;
+const V=[{from:-80,y:R*1.5,tx:cx-R*.45,ty:R*.75,s:96,t:350},{from:W+80,y:R*1.2,tx:cx+R*.5,ty:R*1.05,s:82,t:600},{from:-80,y:R*.4,tx:cx+R*.05,ty:R*.45,s:70,t:850}];
+let hits=0;
+V.forEach((v,i)=>{const b=document.createElement('div');b.innerHTML=BAT;b.style.cssText=`position:absolute;left:0;top:0;width:${v.s}px;height:${v.s/2}px;will-change:transform`;
+const w=b.firstChild;w.style.animation='aleteo .16s ease-in-out infinite alternate';ov.appendChild(b);
+const x0=v.from,y0=v.y,x1=v.tx-v.s/2,y1=v.ty-v.s/4,dir=x0<x1?1:-1;
+const fly=b.animate([{transform:`translate(${x0}px,${y0+40}px) rotate(${dir*8}deg)`},{transform:`translate(${(x0+x1)/2}px,${y1-50}px) rotate(${dir*-6}deg)`,offset:.55},{transform:`translate(${x1}px,${y1}px) rotate(0deg)`}],{duration:dur(700,900),delay:v.t,easing:'cubic-bezier(.4,.1,.6,1)',fill:'forwards'});
+fly.onfinish=()=>{
+ /* choque: la telaraña se sacude y el murciélago queda enredado un instante */
+ w.style.animation='aleteo .06s linear infinite alternate';
+ tela.animate([{transform:'rotate(0)'},{transform:`rotate(${dir*2.5}deg) scaleY(1.03)`},{transform:`rotate(${-dir*1.5}deg)`},{transform:'rotate(0)'}],{duration:500,easing:'ease-out',composite:'add'});
+ b.animate([{transform:`translate(${x1}px,${y1}px) rotate(0)`},{transform:`translate(${x1+dir*4}px,${y1+3}px) rotate(${dir*12}deg)`},{transform:`translate(${x1-dir*3}px,${y1}px) rotate(${-dir*8}deg)`},{transform:`translate(${x1}px,${y1+2}px) rotate(${dir*5}deg)`}],{duration:520,fill:'forwards'}).onfinish=()=>{
+  w.style.animation='none';
+  /* caída: se suelta, gira y cae hasta salir de la pantalla */
+  const fall=b.animate([{transform:`translate(${x1}px,${y1+2}px) rotate(${dir*5}deg)`,opacity:1},{transform:`translate(${x1+dir*30}px,${innerHeight+60}px) rotate(${dir*200}deg)`,opacity:.9}],{duration:dur(900,1150),easing:'cubic-bezier(.5,0,.9,.6)',fill:'forwards'});
+  fall.onfinish=()=>{b.remove();if(++hits===V.length)tela.animate([{opacity:1},{opacity:0}],{duration:600,delay:250,fill:'forwards'}).onfinish=()=>ov.remove()}}}});
+setTimeout(()=>ov.remove(),9000);/* por las dudas */
+}
 function draw(){const V={vehs:vVehs,veh:vVeh,vnuevo:vVNuevo,hoy:vHoy,nuevo:vNuevo,ficha:vFicha,buscar:vBuscar,cuenta:vCuenta,inf:vInf,ajustes:vAjustes};
 if(!user||!emp){$('#app').innerHTML=user?'<small>Cargando...</small>':vAuth();$('#nav').style.display='none';return}
-$('#app').innerHTML=V[tab]();$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='ficha'||tab==='nuevo'?'hoy':tab==='veh'||tab==='vnuevo'?'vehs':tab;
+$('#app').innerHTML=V[tab]();if(!window.__intro){window.__intro=1;setTimeout(introHw,150)}$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='ficha'||tab==='nuevo'?'hoy':tab==='veh'||tab==='vnuevo'?'vehs':tab;
 document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t))}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 /* Instalar la app con un botón */
