@@ -67,7 +67,9 @@ let db,auth,F,Au,user=null,emp=null,CT=[],R=[],tab='hoy',cur=null,q='',buscado=f
 const left=()=>Math.ceil((emp.trialHasta.toDate()-new Date())/864e5),locked=()=>!emp.suscripta&&left()<=0;
 const banner=()=>emp.suscripta?'':`<div class="c note">${locked()?'La prueba terminó. Suscribite para seguir cargando.':'Prueba gratis: quedan '+left()+' días'}</div>`;
 const pagado=c=>(c.pagos||[]).reduce((s,p)=>s+ +p.m,0);
-const deuda=c=>c.estado==='cerrado'?+c.deudaCierre||0:Math.max(0,Object.values(c.dias||{}).filter(x=>x==='D').length*c.precio-pagado(c));
+/* Precio vigente en una fecha: el historial guarda cada cambio de precio, así la deuda vieja no se recalcula */
+const precioEn=(c,f)=>{let p=+c.precio||0;const H=c.precios||[];if(H.length){p=+H[0].p;for(const h of H)if(h.desde<=f)p=+h.p}return p};
+const deuda=c=>c.estado==='cerrado'?+c.deudaCierre||0:Math.max(0,Object.entries(c.dias||{}).filter(([,x])=>x==='D').reduce((s,[f])=>s+precioEn(c,f),0)-pagado(c));
 function atraso(c){const d=c.dias||{};let n=0,i=d[day(0)]?0:1;while(d[day(-i)]==='D'){n++;i++}return n}
 const st=c=>c.estado==='cerrado'?(deuda(c)>0||(c.motivo&&c.motivo!=='Sin novedad'&&!c.saldadaEl)?3:0):atraso(c);
 const badge=n=>`<span class="pill ${n>=3?'r':n>=1?'y':'g'}">${n>=3?'No alquilar':n>=1?'Precaución':'Buen cliente'}</span>`;
@@ -106,7 +108,7 @@ const vNuevo=()=>`<button class="l" onclick="go('hoy')">Volver</button><h1>Nuevo
 <input id="mu" placeholder="Multa por rescisión ($, si hay plazo)" inputmode="numeric"><input id="an" placeholder="Anticipo o depósito ($)" inputmode="numeric"><small id="er" style="color:var(--ro)"></small><button class="b ac" onclick="addC()">Guardar chofer</button></div>`;
 async function addC(){const v=i=>E(i).value.trim();if(locked()){go('cuenta');return}
 if(!v('n')||!/^\d{6,9}$/.test(v('dni'))||!+v('pr')){E('er').textContent='Completá nombre, DNI (solo números) y precio por día.';return}
-const ref=F.doc(F.collection(db,'empresas',user.uid,'contratos')),c={dni:v('dni'),nombre:v('n'),tel:v('tel'),provincia:E('pv').value,direccion:v('dir'),vehiculo:v('veh'),precio:+v('pr'),forma:v('fo'),plazo:+v('pl'),multa:+v('mu')||0,anticipo:+v('an')||0,alta:day(0),estado:'vigente',dias:{},pagos:[]};
+const ref=F.doc(F.collection(db,'empresas',user.uid,'contratos')),c={dni:v('dni'),nombre:v('n'),tel:v('tel'),provincia:E('pv').value,direccion:v('dir'),vehiculo:v('veh'),precio:+v('pr'),precios:[{desde:day(0),p:+v('pr')}],forma:v('fo'),plazo:+v('pl'),multa:+v('mu')||0,anticipo:+v('an')||0,alta:day(0),estado:'vigente',dias:{},pagos:[]};
 try{await F.setDoc(ref,c);await sync({...c,id:ref.id})}catch(x){E('er').textContent=x.message;return}await load();go('hoy')}
 function vFicha(){const c=CT.find(x=>x.id===cur),d=c.dias||{};let h='';for(let i=13;i>=0;i--){const v=d[day(-i)];h+=`<i class="hd ${v==='P'?'g':v==='D'?'r':''}"></i>`}
 return `<button class="l" onclick="go('hoy')">Volver</button><h1>${esc(c.nombre)}</h1><div class="c">${badge(st(c))}<br>DNI ${esc(c.dni)}. Tel ${waLink(c.tel)}<br>Dirección: ${mapLink(c)}<br>${esc(c.vehiculo)}. ${fmt(c.precio)} por día, pago ${c.forma}${c.plazo?', contrato de '+c.plazo+' meses':''}<br><b>Deuda: ${fmt(deuda(c))}</b>${c.estado==='cerrado'?'<br><small>Cerrado el '+esc(c.cerradoEn)+'. Motivo: '+esc(c.motivo)+'</small>':''}</div>
@@ -114,7 +116,7 @@ return `<button class="l" onclick="go('hoy')">Volver</button><h1>${esc(c.nombre)
 ((c.pagos||[]).length?`<div class="c"><b>Pagos registrados</b>${(c.pagos||[]).map((p,i)=>`<div class="row"><span>${esc(p.f)} · <b>${fmt(p.m)}</b></span>${c.estado==='vigente'?`<button class="l" style="color:var(--ro)" onclick="quitarPago(${i})">Quitar</button>`:''}</div>`).reverse().join('')}<div class="row"><small>Total pagado</small><b>${fmt(pagado(c))}</b></div></div>`:'')+
 (c.estado==='vigente'?`
 <div class="c f"><b>Registrar pago</b><input id="mp" placeholder="Monto recibido ($)" inputmode="numeric"><button class="b" onclick="pago()">Guardar pago</button></div>
-<details class="c"><summary><b>Editar datos de contacto</b></summary><div class="f" style="margin-top:10px"><input id="et" value="${esc(c.tel)}" placeholder="Teléfono" inputmode="tel"><select id="ep"><option value="">Provincia</option>${PROV.map(p=>`<option ${p===c.provincia?'selected':''}>${p}</option>`).join('')}</select><input id="ed" value="${esc(c.direccion)}" placeholder="Barrio y dirección"><input id="ev" value="${esc(c.vehiculo)}" placeholder="Vehículo"><button class="b" onclick="editar()">Guardar cambios</button></div></details>
+<details class="c"><summary><b>Editar datos de contacto</b></summary><div class="f" style="margin-top:10px"><input id="et" value="${esc(c.tel)}" placeholder="Teléfono" inputmode="tel"><select id="ep"><option value="">Provincia</option>${PROV.map(p=>`<option ${p===c.provincia?'selected':''}>${p}</option>`).join('')}</select><input id="ed" value="${esc(c.direccion)}" placeholder="Barrio y dirección"><input id="ev" value="${esc(c.vehiculo)}" placeholder="Vehículo"><small>Precio por día (si lo cambiás, rige desde hoy; los días anteriores mantienen su precio)</small><input id="epr" value="${+c.precio||0}" inputmode="numeric"><button class="b" onclick="editar()">Guardar cambios</button></div></details>
 <div class="c f"><b>Cerrar contrato</b><input id="dn" placeholder="Daños al vehículo ($)" inputmode="numeric"><input id="ot" placeholder="Otros conceptos ($)" inputmode="numeric">
 <select id="mo"><option>Sin novedad</option><option>Deuda impaga</option><option>Daño al vehículo</option><option>Accidente</option><option>Manejo bajo efectos del alcohol</option><option>No devolvió el vehículo</option><option>Otro</option></select>
 <input id="hc" placeholder="Hechos: qué pasó y cuándo"><button class="b selr" onclick="cerrar()">Calcular deuda y cerrar</button></div><button class="l" style="color:var(--ro)" onclick="borrar()">Eliminar este chofer (cargado por error)</button>`:(st(c)>=3?`<button class="b sel" style="width:100%" onclick="saldar()">Marcar como saldado o resuelto</button>`:''))+`<button class="b ac" style="width:100%" onclick="informe('${esc(c.dni)}')">Ver informe para PDF</button>`}
@@ -132,7 +134,9 @@ async function pago(){const m=+String(E('mp').value).replace(/\D/g,'')||0;if(m<=
 try{await F.updateDoc(cref(c.id),{pagos:F.arrayUnion(p)})}catch(x){alert('No se pudo guardar: '+x.message);return}c.pagos=[...(c.pagos||[]),p];await sync(c);draw()}
 async function quitarPago(i){const c=CT.find(x=>x.id===cur),p=c.pagos[i];if(!p||!confirm('¿Quitar el pago de '+fmt(p.m)+' del '+p.f+'?'))return;
 try{await F.updateDoc(cref(c.id),{pagos:F.arrayRemove(p)})}catch(x){alert('No se pudo quitar: '+x.message);return}c.pagos=c.pagos.filter((_,j)=>j!==i);await sync(c);draw()}
-async function editar(){const c=CT.find(x=>x.id===cur),u={tel:E('et').value.trim(),provincia:E('ep').value,direccion:E('ed').value.trim(),vehiculo:E('ev').value.trim()};
+async function editar(){const c=CT.find(x=>x.id===cur),u={tel:E('et').value.trim(),provincia:E('ep').value,direccion:E('ed').value.trim(),vehiculo:E('ev').value.trim()},np=+String(E('epr').value).replace(/\D/g,'');
+if(!np){alert('El precio por día tiene que ser mayor a 0.');return}
+if(np!==+c.precio){const H=(c.precios&&c.precios.length?c.precios:[{desde:c.alta,p:+c.precio}]).filter(h=>h.desde<day(0));u.precio=np;u.precios=[...H,{desde:day(0),p:np}]}
 try{await F.updateDoc(cref(c.id),u)}catch(x){alert('No se pudo guardar: '+x.message);return}Object.assign(c,u);await sync(c);draw()}
 async function cerrar(){const c=CT.find(x=>x.id===cur),g=i=>+E(i).value||0,fin=new Date(c.alta+'T00:00');fin.setMonth(fin.getMonth()+c.plazo);
 const mu=c.plazo&&new Date()<fin?+c.multa:0,dd=deuda(c),tot=dd+mu+g('dn')+g('ot')-c.anticipo,u={estado:'cerrado',cerradoEn:day(0),deudaCierre:Math.max(0,tot),detalle:{dd,mu,dn:g('dn'),ot:g('ot'),ant:+c.anticipo},motivo:E('mo').value,hechos:E('hc').value};
