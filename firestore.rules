@@ -7,52 +7,96 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isMe(uid) { return signedIn() && request.auth.uid == uid; }
     function empresa(uid) { return get(/databases/$(database)/documents/empresas/$(uid)).data; }
-    // Cuenta activa: suscripta (la activás vos desde la consola) o dentro de la prueba.
+    // Colaborador de la empresa (se unió con el código).
+    function miembro(eid) {
+      return signedIn() && exists(/databases/$(database)/documents/empresas/$(eid)/miembros/$(request.auth.uid));
+    }
+    // Dueño o colaborador.
+    function equipo(eid) { return isMe(eid) || miembro(eid); }
+    // Empresa con la que trabaja el usuario: la propia, o la que figura en usuarios/{uid}.
+    function miEmpresa() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresaId
+        : request.auth.uid;
+    }
     // Etapa beta: todos activos sin cargo. Para empezar a cobrar, cambiar a false.
     function beta() { return true; }
-    function activa(uid) {
-      let e = empresa(uid);
+    // Cuenta activa: suscripta (la activás vos desde la consola) o dentro de la prueba.
+    function activa(eid) {
+      let e = empresa(eid);
       return beta() || e.suscripta == true || e.trialHasta > request.time;
     }
 
-    // Datos de cada empresa. El usuario NO puede tocar "suscripta" ni "trialHasta":
+    // Datos de cada empresa. Nadie puede tocar "suscripta" ni "trialHasta":
     // solo vos, desde la consola de Firebase.
     match /empresas/{uid} {
-      allow read: if isMe(uid);
+      allow read: if equipo(uid);
       allow create: if isMe(uid)
         && request.resource.data.suscripta == false
         && request.resource.data.trialHasta <= request.time + duration.value(4, 'd');
+      // Solo el dueño cambia nombre, interés y código de colaboradores.
       allow update: if isMe(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'interes']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'interes', 'codigo']);
       allow delete: if false;
 
-      // Contratos (choferes). Cargar nuevos requiere cuenta activa;
-      // corregir, saldar o borrar los propios se permite siempre.
+      // Contratos (choferes). Dueño y colaboradores cargan y cobran;
+      // cerrar un contrato y borrar es solo del dueño.
       match /contratos/{id} {
-        allow read: if isMe(uid);
-        allow create: if isMe(uid) && activa(uid);
-        allow update, delete: if isMe(uid);
+        allow read: if equipo(uid);
+        allow create: if equipo(uid) && activa(uid);
+        allow update: if isMe(uid)
+          || (miembro(uid) && request.resource.data.estado == resource.data.estado);
+        allow delete: if isMe(uid);
       }
 
-      // Vehículos y sus gastos (solo los ve la empresa dueña).
+      // Vehículos y sus gastos.
       match /vehiculos/{id} {
-        allow read: if isMe(uid);
-        allow create: if isMe(uid) && activa(uid);
-        allow update, delete: if isMe(uid);
+        allow read: if equipo(uid);
+        allow create: if equipo(uid) && activa(uid);
+        allow update: if equipo(uid);
+        allow delete: if isMe(uid);
       }
+
+      // Colaboradores: se suman a sí mismos con el código vigente de la empresa.
+      // El dueño los ve y los quita; el colaborador puede irse.
+      match /miembros/{mid} {
+        allow read: if isMe(uid) || isMe(mid);
+        allow create: if isMe(mid) && mid != uid
+          && empresa(uid).codigo is string
+          && request.resource.data.codigo == empresa(uid).codigo;
+        allow update: if false;
+        allow delete: if isMe(uid) || isMe(mid);
+      }
+    }
+
+    // Código -> empresa, para que un colaborador encuentre a qué empresa unirse.
+    match /codigos/{codigo} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.empresaId == request.auth.uid
+        && empresa(request.auth.uid).nombre is string;
+      allow delete: if signedIn() && resource.data.empresaId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // A qué empresa pertenece cada colaborador (solo lo ve y cambia él mismo).
+    match /usuarios/{uid} {
+      allow read, delete: if isMe(uid);
+      allow create, update: if isMe(uid) && miembro(request.resource.data.empresaId);
     }
 
     // Registro compartido por DNI.
     match /registro/{dni}/entradas/{id} {
       // Buscar DNIs solo con cuenta activa (es lo que se paga).
-      allow read: if signedIn() && activa(request.auth.uid);
-      // Cada empresa solo escribe entradas propias, con su nombre real,
+      allow read: if signedIn() && equipo(miEmpresa()) && activa(miEmpresa());
+      // Cada empresa (dueño o colaborador) escribe solo entradas propias, con su nombre real,
       // y que correspondan a un contrato suyo con ese mismo DNI.
       allow create, update: if signedIn()
-        && request.resource.data.empresaId == request.auth.uid
-        && request.resource.data.empresaNombre == empresa(request.auth.uid).nombre
-        && get(/databases/$(database)/documents/empresas/$(request.auth.uid)/contratos/$(id)).data.dni == dni
-        && (resource == null || resource.data.empresaId == request.auth.uid);
+        && equipo(request.resource.data.empresaId)
+        && request.resource.data.empresaNombre == empresa(request.resource.data.empresaId).nombre
+        && get(/databases/$(database)/documents/empresas/$(request.resource.data.empresaId)/contratos/$(id)).data.dni == dni
+        && (resource == null || resource.data.empresaId == request.resource.data.empresaId);
+      // Borrar un registro: solo la empresa que lo cargó (el dueño).
       allow delete: if signedIn() && resource.data.empresaId == request.auth.uid;
     }
   }
