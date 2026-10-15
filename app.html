@@ -257,7 +257,7 @@ async function salir(){if(user&&user.isAnonymous&&!confirm('Vas a necesitar el c
 function suscribir(){if(!/^https?:\/\//.test(LINK_PAGO)){alert('El pago online todavía no está disponible. Escribinos para activar tu cuenta.');return}window.open(LINK_PAGO,'_blank')}
 const vAjustes=()=>`<button class="l" onclick="go('hoy')">Volver</button><h1>Configuración</h1>
 <div class="c f"><b>Apariencia</b><small>Elegí cómo se ve la app.</small><div class="seg">${[['auto','Según el dispositivo'],['claro','Clara'],['oscuro','Oscura']].map(([v,t])=>`<button class="b ${tema()===v?'ac':''}" onclick="setTema('${v}')">${t}</button>`).join('')}</div></div>
-<div class="c f"><b>Tema de Halloween 🎃</b><small>Se activa solo del 15 de octubre al 2 de noviembre.</small><div class="seg">${[['auto','Automático'],['si','Siempre'],['no','Apagado']].map(([v,t])=>`<button class="b ${hwPref()===v?'ac':''}" onclick="setHw('${v}')">${t}</button>`).join('')}</div></div>
+<div class="c f"><b>Tema de Halloween 🎃</b><small>Se activa solo del 15 de octubre al 2 de noviembre.</small><button class="b" onclick="introHw(true)">🦇 Ver animación</button><div class="seg">${[['auto','Automático'],['si','Siempre'],['no','Apagado']].map(([v,t])=>`<button class="b ${hwPref()===v?'ac':''}" onclick="setHw('${v}')">${t}</button>`).join('')}</div></div>
 <div class="c f"><b>Recordatorio de cobro</b><small>Un aviso a la hora que elijas para marcar los pagos del día.</small><label class="sw"><input type="checkbox" id="rn" ${rec().on?'checked':''} onchange="guardarRec()">Activar recordatorio</label><input type="time" id="rh" value="${rec().h}" onchange="guardarRec()"><small id="rm"></small></div>
 <div class="c"><small>El aviso suena mientras la app esté abierta o instalada y activa en el celular. Para recibirlo con la app totalmente cerrada hace falta una etapa más, que se agrega después.</small></div>`;
 async function guardarRec(){const on=E('rn').checked,h=E('rh').value||'09:00';
@@ -311,8 +311,10 @@ async function borrarV(){const v=VH.find(x=>x.id===cur);if(!confirm('¿Eliminar 
 try{await F.deleteDoc(vref(v.id));for(const c of CT.filter(c=>c.vehiculoId===v.id)){await F.updateDoc(cref(c.id),{vehiculoId:''});c.vehiculoId=''}}catch(x){alert('No se pudo eliminar: '+x.message);return}VH=VH.filter(x=>x.id!==v.id);go('vehs')}
 
 /* ===== Intro de Halloween: murciélagos chocan con una telaraña y caen. Una vez por apertura, no bloquea la app. ===== */
-function introHw(){
-try{if(!hw()||matchMedia('(prefers-reduced-motion: reduce)').matches||sessionStorage.getItem('introHw'))return;sessionStorage.setItem('introHw','1')}catch(e){return}
+let introOn=false,ocultoDesde=0;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)ocultoDesde=Date.now();else if(ocultoDesde&&Date.now()-ocultoDesde>2*60e3&&user&&emp)setTimeout(()=>introHw(),300)});
+function introHw(forzar){
+if(introOn)return;if(!forzar&&(!hw()||matchMedia('(prefers-reduced-motion: reduce)').matches))return;introOn=true;setTimeout(()=>introOn=false,4500);
 const W=innerWidth,cx=W/2,R=Math.min(W*.36,170),ns='http://www.w3.org/2000/svg';
 const ov=document.createElement('div');ov.setAttribute('aria-hidden','true');
 ov.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden';
@@ -346,7 +348,7 @@ setTimeout(()=>ov.remove(),9000);/* por las dudas */
 }
 function draw(){const V={vehs:vVehs,veh:vVeh,vnuevo:vVNuevo,hoy:vHoy,nuevo:vNuevo,ficha:vFicha,buscar:vBuscar,cuenta:vCuenta,inf:vInf,ajustes:vAjustes};
 if(!user||!emp){$('#app').innerHTML=user?'<small>Cargando...</small>':vAuth();$('#nav').style.display='none';return}
-$('#app').innerHTML=V[tab]();if(!window.__intro){window.__intro=1;setTimeout(introHw,150)}$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='ficha'||tab==='nuevo'?'hoy':tab==='veh'||tab==='vnuevo'?'vehs':tab;
+$('#app').innerHTML=V[tab]();if(!window.__intro){window.__intro=1;setTimeout(()=>introHw(),400)}$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='ficha'||tab==='nuevo'?'hoy':tab==='veh'||tab==='vnuevo'?'vehs':tab;
 document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t))}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 /* Instalar la app con un botón */
