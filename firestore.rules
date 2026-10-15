@@ -8,9 +8,11 @@ service cloud.firestore {
     function isMe(uid) { return signedIn() && request.auth.uid == uid; }
     function empresa(uid) { return get(/databases/$(database)/documents/empresas/$(uid)).data; }
     // Cuenta activa: suscripta (la activás vos desde la consola) o dentro de la prueba.
+    // Etapa beta: todos activos sin cargo. Para empezar a cobrar, cambiar a false.
+    function beta() { return true; }
     function activa(uid) {
       let e = empresa(uid);
-      return e.suscripta == true || e.trialHasta > request.time;
+      return beta() || e.suscripta == true || e.trialHasta > request.time;
     }
 
     // Datos de cada empresa. El usuario NO puede tocar "suscripta" ni "trialHasta":
