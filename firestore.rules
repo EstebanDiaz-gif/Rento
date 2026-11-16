@@ -13,6 +13,11 @@ service cloud.firestore {
     }
     // Dueño o colaborador.
     function equipo(eid) { return isMe(eid) || miembro(eid); }
+    // Administrador de Rento: su uid tiene un documento en la colección "admins"
+    // (se crea a mano desde la consola de Firebase).
+    function admin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
     // Empresa con la que trabaja el usuario: la propia, o la que figura en usuarios/{uid}.
     function miEmpresa() {
       return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
@@ -30,21 +35,24 @@ service cloud.firestore {
     // Datos de cada empresa. Nadie puede tocar "suscripta" ni "trialHasta":
     // solo vos, desde la consola de Firebase.
     match /empresas/{uid} {
-      allow read: if equipo(uid);
+      allow get: if equipo(uid) || admin();
+      allow list: if admin();
       // Los colaboradores que entran solo con código (sin cuenta) no pueden crear empresas.
       allow create: if isMe(uid)
         && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.resource.data.suscripta == false
         && request.resource.data.trialHasta <= request.time + duration.value(4, 'd');
       // Solo el dueño cambia nombre, interés y código de colaboradores.
-      allow update: if isMe(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'interes', 'codigo']);
+      allow update: if (isMe(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'interes', 'codigo']))
+        // El administrador activa o pausa suscripciones y extiende pruebas.
+        || (admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['suscripta', 'trialHasta']));
       allow delete: if false;
 
       // Contratos (choferes). Dueño y colaboradores cargan y cobran;
       // cerrar un contrato y borrar es solo del dueño.
       match /contratos/{id} {
-        allow read: if equipo(uid);
+        allow read: if equipo(uid) || admin();
         allow create: if equipo(uid) && activa(uid);
         allow update: if isMe(uid)
           || (miembro(uid) && request.resource.data.estado == resource.data.estado);
@@ -53,7 +61,7 @@ service cloud.firestore {
 
       // Vehículos y sus gastos.
       match /vehiculos/{id} {
-        allow read: if equipo(uid);
+        allow read: if equipo(uid) || admin();
         allow create: if equipo(uid) && activa(uid);
         allow update: if equipo(uid);
         allow delete: if isMe(uid);
@@ -62,13 +70,19 @@ service cloud.firestore {
       // Colaboradores: se suman a sí mismos con el código vigente de la empresa.
       // El dueño los ve y los quita; el colaborador puede irse.
       match /miembros/{mid} {
-        allow read: if isMe(uid) || isMe(mid);
+        allow read: if isMe(uid) || isMe(mid) || admin();
         allow create: if isMe(mid) && mid != uid
           && empresa(uid).codigo is string
           && request.resource.data.codigo == empresa(uid).codigo;
         allow update: if false;
         allow delete: if isMe(uid) || isMe(mid);
       }
+    }
+
+    // Administradores: cada uno solo puede comprobar si él mismo lo es. Se cargan desde la consola.
+    match /admins/{aid} {
+      allow get: if isMe(aid);
+      allow list, write: if false;
     }
 
     // Código -> empresa, para que un colaborador encuentre a qué empresa unirse.

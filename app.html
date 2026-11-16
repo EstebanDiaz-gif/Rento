@@ -88,7 +88,7 @@ const PROV=['Buenos Aires','CABA','Catamarca','Chaco','Chubut','Córdoba','Corri
 const wa=t=>{let d=String(t||'').replace(/\D/g,'').replace(/^0+/,'');if(!d)return '';if(d.startsWith('54'))return d;if(d.length===10)d='9'+d;return '54'+d};
 const waLink=t=>wa(t)?`<a href="https://wa.me/${wa(t)}" target="_blank" rel="noopener">${esc(t)} (WhatsApp)</a>`:esc(t||'-');
 const mapLink=c=>(c.direccion||c.provincia)?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([c.direccion,c.provincia,'Argentina'].filter(Boolean).join(', '))}" target="_blank" rel="noopener">${esc([c.direccion,c.provincia].filter(Boolean).join(', '))} (ver en el mapa)</a>`:'-';
-let db,auth,F,Au,user=null,emp=null,EID=null,MIEMBROS=[],CT=[],VH=[],mes=new Date().toLocaleDateString('en-CA').slice(0,7),R=[],tab='hoy',cur=null,q='',buscado=false,nom='';
+let db,auth,F,Au,user=null,emp=null,ADMIN=false,ADM=null,admQ='',EID=null,MIEMBROS=[],CT=[],VH=[],mes=new Date().toLocaleDateString('en-CA').slice(0,7),R=[],tab='hoy',cur=null,q='',buscado=false,nom='';
 /* Dueño de la empresa o colaborador */
 const esDueno=()=>!!user&&EID===user.uid;
 const left=()=>Math.ceil((emp.trialHasta.toDate()-new Date())/864e5),locked=()=>!BETA&&!emp.suscripta&&left()<=0;
@@ -119,13 +119,14 @@ Au.onAuthStateChanged(auth,async u=>{user=u;if(u){try{await load()}catch(x){$('#
 catch(x){$('#app').innerHTML='<div class="c">No se pudo iniciar: '+esc(x.message)+'</div>'}})();
 
 async function load(){EID=user.uid;
+try{ADMIN=!user.isAnonymous&&(await F.getDoc(F.doc(db,'admins',user.uid))).exists()}catch(x){ADMIN=false}
 /* ¿Es colaborador de otra empresa? */
 try{const us=await F.getDoc(F.doc(db,'usuarios',user.uid));const e=us.exists()&&us.data().empresaId;
 if(e&&e!==user.uid){const m=await F.getDoc(F.doc(db,'empresas',e,'miembros',user.uid));if(m.exists())EID=e;else await F.deleteDoc(F.doc(db,'usuarios',user.uid))}}catch(x){}
 if(EID===user.uid&&user.isAnonymous){if(codPend){const k=codPend;codPend='';await unirse(k);return}
 msgAuth=msgAuth||'Tu acceso con código terminó. Pedile el código al dueño y volvé a ingresar.';await Au.signOut(auth);return}
 const ref=F.doc(db,'empresas',EID);let s=await F.getDoc(ref);
-if(!s.exists()&&esDueno()){await F.setDoc(ref,{nombre:nom||'Mi empresa',email:user.email,suscripta:false,trialHasta:F.Timestamp.fromDate(new Date(Date.now()+DIAS_PRUEBA*864e5))});s=await F.getDoc(ref)}
+if(!s.exists()&&esDueno()){await F.setDoc(ref,{nombre:nom||'Mi empresa',email:user.email,creado:F.Timestamp.now(),suscripta:false,trialHasta:F.Timestamp.fromDate(new Date(Date.now()+DIAS_PRUEBA*864e5))});s=await F.getDoc(ref)}
 emp={id:EID,...s.data()};const c=await F.getDocs(F.collection(db,'empresas',EID,'contratos'));CT=c.docs.map(d=>({id:d.id,...d.data()}));
 MIEMBROS=[];if(esDueno()){try{const mm=await F.getDocs(F.collection(db,'empresas',EID,'miembros'));MIEMBROS=mm.docs.map(d=>({id:d.id,...d.data()}))}catch(x){}}
 if(codPend){const k=codPend;codPend='';await unirse(k);return}
@@ -232,7 +233,7 @@ function vInf(){const w=Math.max(0,...R.map(r=>r.semaforo));return `<div class="
 R.map(r=>`<p><b>${esc(acr(r))}</b>${r.acreedor?' (informado por '+esc(r.empresaNombre)+')':'. '+esc(r.vehiculo)}<br>${r.acreedor?(r.fechaIncidente?'Fecha del incidente: '+esc(r.fechaIncidente):'Cargado el '+esc(r.alta)):'Alta '+esc(r.alta)+'. '+(r.estado==='cerrado'?'Cerrado el '+esc(r.cerradoEn):'Vigente')}<br>Deuda con ${esc(acr(r))}: <b>${fmt(r.deuda)}</b>${r.saldadaEl?'<br>Deuda original de '+fmt(r.deudaOriginal)+', saldada el '+esc(r.saldadaEl):''}${r.motivo?'<br>Motivo: '+esc(r.motivo):''}${r.hechos?'<br>Hechos: '+esc(r.hechos):''}</p>`).join('')+`<small>Datos informados por cada empresa. Ante un error, comunicarse con la empresa que lo cargó para corregirlo.</small></div>`}
 const vCuenta=()=>esDueno()?vCuentaDueno():vCuentaColab();
 const vCuentaColab=()=>`<h1>Cuenta</h1>${locked()?'<div class="c note"><b>Cuenta pausada.</b> La suscripción de '+esc(emp.nombre)+' no está activa. Podés ver los datos, pero para cargar cobros el dueño tiene que pagar la suscripción.</div>':''}<div class="c"><b>Sos colaborador de ${esc(emp.nombre)}</b><br><small>Podés marcar cobros, registrar pagos, agregar choferes, cargar gastos y kilómetros. Borrar, cerrar contratos y la configuración de la empresa quedan para el dueño.</small><br><small>${user.isAnonymous?'Entraste con código. Si cerrás sesión, vas a necesitar el código de nuevo.':'Ingresaste como '+esc(user.email)}</small></div><button class="b" style="width:100%;margin-bottom:10px" onclick="salirEmpresa()">Dejar de colaborar con ${esc(emp.nombre)}</button>${botonInstalar()}<button class="b" style="width:100%" onclick="salir()">Cerrar sesión</button>`;
-const vCuentaDueno=()=>`<h1>Cuenta</h1><div class="c f"><b>Nombre de tu empresa</b><input id="em2" value="${esc(emp.nombre)}"><button class="b" onclick="guardarNombre()">Guardar nombre</button></div><div class="c f"><b>Interés diario por atraso</b><small>Porcentaje que se suma cada día sobre el alquiler adeudado. Queda precargado al agregar un chofer nuevo; en cada chofer lo podés cambiar.</small><input id="ei2" value="${+(emp.interes||0)}" placeholder="Ej.: 2" inputmode="decimal"><button class="b" onclick="guardarInteres()">Guardar interés</button></div>${vColab()}
+const vCuentaDueno=()=>`<h1>Cuenta</h1>${ADMIN?'<button class="b ac" style="width:100%;margin-bottom:12px" onclick="abrirAdmin()">🛠️ Panel de administrador</button>':''}<div class="c f"><b>Nombre de tu empresa</b><input id="em2" value="${esc(emp.nombre)}"><button class="b" onclick="guardarNombre()">Guardar nombre</button></div><div class="c f"><b>Interés diario por atraso</b><small>Porcentaje que se suma cada día sobre el alquiler adeudado. Queda precargado al agregar un chofer nuevo; en cada chofer lo podés cambiar.</small><input id="ei2" value="${+(emp.interes||0)}" placeholder="Ej.: 2" inputmode="decimal"><button class="b" onclick="guardarInteres()">Guardar interés</button></div>${vColab()}
 <div class="c">${BETA?'<b>Versión beta, sin cargo</b><br>Rento está en etapa de prueba y la podés usar gratis con todas sus funciones.<br><br><small>Precio cuando se lance: '+PRECIO+' por mes. Te vamos a avisar antes de empezar a cobrar, y nada de lo que cargues se pierde.</small>':emp.suscripta?'<b>Suscripción activa</b><br>'+PRECIO+' por mes':'<b>Prueba gratis</b><br>'+(left()>0?(left()===1?'Queda 1 día':'Quedan '+left()+' días')+' de prueba.':'La prueba terminó.')+' Después: '+PRECIO+' por mes.<br><br><button class="b ac" style="width:100%" onclick="suscribir()">Suscribirme por '+PRECIO+' al mes</button><br><small>Pagá con el mismo mail con el que ingresás ('+esc(emp.email)+'). Te activamos la cuenta apenas se acredita el pago.</small>'}</div><div class="c f"><b>Importar lista de choferes</b><small>Una línea por chofer, separado por punto y coma:<br>nombre;DNI;teléfono;provincia;deuda;motivo;hechos</small><textarea id="imp" rows="6" style="width:100%;padding:13px;border:1.5px solid transparent;border-radius:12px;background:var(--bg);color:var(--tx);font:16px 'Plus Jakarta Sans',system-ui,sans-serif" placeholder="Juan Pérez;30111222;3816145326;Tucumán;150000;Daño al vehículo;Chocó la moto el 3/5"></textarea><button class="b" onclick="importar()">Importar</button></div>${vRep()}${impMsg?'<div class="c note">'+esc(impMsg)+'</div>':''}${botonInstalar()}<button class="b" style="width:100%" onclick="salir()">Cerrar sesión</button>`;
 /* ---- Colaboradores ---- */
 const ALF='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -346,9 +347,36 @@ fly.onfinish=()=>{
   fall.onfinish=()=>{b.remove();if(++hits===V.length)tela.animate([{opacity:1},{opacity:0}],{duration:600,delay:250,fill:'forwards'}).onfinish=()=>ov.remove()}}}});
 setTimeout(()=>ov.remove(),9000);/* por las dudas */
 }
-function draw(){const V={vehs:vVehs,veh:vVeh,vnuevo:vVNuevo,hoy:vHoy,nuevo:vNuevo,ficha:vFicha,buscar:vBuscar,cuenta:vCuenta,inf:vInf,ajustes:vAjustes};
+/* ===== Panel de administrador (solo cuentas listadas en la colección "admins") ===== */
+const fechaTs=x=>x&&x.toDate?x.toDate().toLocaleDateString('es-AR'):'';
+function estadoE(e){const th=e.trialHasta&&e.trialHasta.toDate?e.trialHasta.toDate():null;
+if(e.suscripta)return{k:'sus',t:'Suscripta',c:'var(--ok)'};if(th&&th>new Date())return{k:'pru',t:'Prueba hasta '+th.toLocaleDateString('es-AR'),c:'var(--am)'};return{k:'ven',t:BETA?'Prueba vencida (beta: activa)':'Prueba vencida',c:'var(--ro)'}}
+async function abrirAdmin(){if(!ADMIN)return;tab='admin';ADM=null;draw();
+try{const q=await F.getDocs(F.collection(db,'empresas'));const L=q.docs.map(d=>({id:d.id,...d.data()}));
+const cnt=async(id,col)=>{try{return(await F.getCountFromServer(F.collection(db,'empresas',id,col))).data().count}catch(x){return null}};
+await Promise.all(L.map(async e=>{[e.nCh,e.nVh,e.nCo]=await Promise.all([cnt(e.id,'contratos'),cnt(e.id,'vehiculos'),cnt(e.id,'miembros')])}));
+L.sort((a,b)=>((b.creado&&b.creado.seconds)||0)-((a.creado&&a.creado.seconds)||0)||String(a.nombre).localeCompare(b.nombre));ADM=L}
+catch(x){ADM={error:x.message}}if(tab==='admin')draw()}
+function vAdmin(){if(!ADMIN)return vCuenta();const top=`<button class="l" onclick="go('cuenta')">Volver</button><h1>Administrador</h1>`;
+if(!ADM)return top+'<div class="c"><small>Cargando empresas…</small></div>';
+if(ADM.error)return top+`<div class="c note"><b>No se pudieron leer las empresas.</b><br><small>${esc(ADM.error)}</small><br><small>Revisá que estén publicadas las reglas nuevas de Firestore.</small></div>`;
+const L=ADM,est=L.map(estadoE),n=k=>est.filter(e=>e.k===k).length,sum=f=>L.reduce((s,e)=>s+(+e[f]||0),0),q=admQ.toLowerCase();
+const F2=L.filter(e=>!q||String(e.nombre||'').toLowerCase().includes(q)||String(e.email||'').toLowerCase().includes(q));
+return top+`<div class="c"><div class="kpi"><div><small>Empresas</small><b>${L.length}</b></div><div><small>Suscriptas</small><b style="color:var(--ok)">${n('sus')}</b></div><div><small>En prueba</small><b style="color:var(--am)">${n('pru')}</b></div></div>
+<div class="kpi"><div><small>Vencidas</small><b style="color:var(--ro)">${n('ven')}</b></div><div><small>Choferes</small><b>${sum('nCh')}</b></div><div><small>Colaboradores</small><b>${sum('nCo')}</b></div></div>
+${BETA?'<small style="display:block;margin-top:10px">Modo beta activo: todas las cuentas funcionan aunque la prueba esté vencida.</small>':''}</div>
+<div class="row"><input id="aq" value="${esc(admQ)}" placeholder="Buscar empresa o email" oninput="admQ=this.value;clearTimeout(window.__aq);window.__aq=setTimeout(()=>{draw();const i=E('aq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)" style="flex:1"><button class="b" style="flex:0 0 auto" onclick="abrirAdmin()">Actualizar</button></div>`+
+(F2.length?'':'<div class="c"><small>No hay empresas que coincidan.</small></div>')+
+F2.map(e=>{const s=estadoE(e),yo=e.id===user.uid;return `<details class="c"><summary style="list-style:none;cursor:pointer"><div class="row" style="border:0;padding:0"><div style="flex:1;min-width:0"><b>${esc(e.nombre||'(sin nombre)')}</b>${yo?' <small>(vos)</small>':''}<br><small>${esc(e.email||'')}</small></div><span class="pill" style="background:${s.c};font-size:12px">${s.k==='sus'?'Suscripta':s.k==='pru'?'Prueba':'Vencida'}</span></div></summary>
+<div style="margin-top:10px"><small>${esc(s.t)}${e.creado?' · Alta '+fechaTs(e.creado):''}</small><div class="kpi"><div><small>Choferes</small><b>${e.nCh??'–'}</b></div><div><small>Vehículos</small><b>${e.nVh??'–'}</b></div><div><small>Colaboradores</small><b>${e.nCo??'–'}</b></div></div>
+<div class="row" style="border:0;gap:8px;margin-top:8px"><button class="b ${e.suscripta?'':'ac'}" style="flex:1" onclick="admSus('${e.id}',${!e.suscripta})">${e.suscripta?'Pausar suscripción':'Activar suscripción'}</button><button class="b" style="flex:1" onclick="admDias('${e.id}',7)">+7 días de prueba</button></div></div></details>`}).join('')}
+async function admSus(id,v){const e=ADM.find(x=>x.id===id);if(!confirm((v?'¿Activar la suscripción de ':'¿Pausar la suscripción de ')+(e.nombre||'esta empresa')+'?'))return;
+try{await F.updateDoc(F.doc(db,'empresas',id),{suscripta:v})}catch(x){alert('No se pudo: '+x.message);return}e.suscripta=v;if(id===EID)emp.suscripta=v;draw()}
+async function admDias(id,d){const e=ADM.find(x=>x.id===id),th=e.trialHasta&&e.trialHasta.toDate?e.trialHasta.toDate():new Date(),base=th>new Date()?th:new Date(),nv=F.Timestamp.fromDate(new Date(base.getTime()+d*864e5));
+try{await F.updateDoc(F.doc(db,'empresas',id),{trialHasta:nv})}catch(x){alert('No se pudo: '+x.message);return}e.trialHasta=nv;if(id===EID)emp.trialHasta=nv;draw()}
+function draw(){const V={admin:vAdmin,vehs:vVehs,veh:vVeh,vnuevo:vVNuevo,hoy:vHoy,nuevo:vNuevo,ficha:vFicha,buscar:vBuscar,cuenta:vCuenta,inf:vInf,ajustes:vAjustes};
 if(!user||!emp){$('#app').innerHTML=user?'<small>Cargando...</small>':vAuth();$('#nav').style.display='none';return}
-$('#app').innerHTML=V[tab]();if(!window.__intro){window.__intro=1;setTimeout(()=>introHw(),400)}$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='ficha'||tab==='nuevo'?'hoy':tab==='veh'||tab==='vnuevo'?'vehs':tab;
+$('#app').innerHTML=V[tab]();if(!window.__intro){window.__intro=1;setTimeout(()=>introHw(),400)}$('#nav').style.display=tab==='inf'?'none':'flex';const t=tab==='admin'?'cuenta':tab==='ficha'||tab==='nuevo'?'hoy':tab==='veh'||tab==='vnuevo'?'vehs':tab;
 document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t))}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 /* Instalar la app con un botón */
